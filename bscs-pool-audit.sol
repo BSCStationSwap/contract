@@ -1028,10 +1028,9 @@ contract FARABSCStartPools is
             "Mismatch length"
         );
 
-        require(_stakedToken != address(0),"Invalid address");
-        require(_rewardTokens != address(0),"Invalid address");
-        require(_feeCollector != address(0),"Invalid address");
-        require(_admin != address(0),"Invalid address");
+        require(address(_stakedToken) != address(0),"Invalid address");
+        require(address(_feeCollector) != address(0),"Invalid address");
+        require(address(_admin) != address(0),"Invalid address");
 
         // Make this contract initialized
         isInitialized = true;
