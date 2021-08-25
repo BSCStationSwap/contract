@@ -899,10 +899,10 @@ abstract contract ReentrancyGuard {
 
 pragma solidity 0.6.12;
 
-contract FARABSCStartPools is
+contract BSCSBaseStartPool is
     Ownable,
     ReentrancyGuard,
-    ERC20("FARA BSCS Start Pools", "FARA-BSCS")
+    ERC20("BSCS Start Pools", "BaseToken-BSCS")
 {
     using SafeMath for uint256;
 
