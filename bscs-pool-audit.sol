@@ -1763,46 +1763,6 @@ contract BSCSBaseStartPool is
     }
 
     //*Override transfer functions, allowing receipts to be transferable */
-
-    function transfer(address recipient, uint256 amount)
-        public
-        virtual
-        override
-        returns (bool)
-    {
-        UserInfo storage _sender = userInfo[_msgSender()];
-        UserInfo storage _receiver = userInfo[recipient];
-
-        _transfer(_msgSender(), recipient, amount);
-
-        _sender.amount = _sender.amount.sub(amount);
-        _receiver.amount = _receiver.amount.add(amount);
-        return true;
-    }
-
-    function transferFrom(
-        address sender,
-        address recipient,
-        uint256 amount
-    ) public virtual override returns (bool) {
-        UserInfo storage _sender = userInfo[sender];
-        UserInfo storage _receiver = userInfo[recipient];
-
-        _transfer(sender, recipient, amount);
-        _approve(
-            sender,
-            _msgSender(),
-            allowance(sender, _msgSender()).sub(
-                amount,
-                "ERC20: transfer amount exceeds allowance"
-            )
-        );
-
-        _sender.amount = _sender.amount.sub(amount);
-        _receiver.amount = _receiver.amount.add(amount);
-        return true;
-    }
-
     function getStakingEndBlock() external view returns (uint256) {
         return stakingEndBlock;
     }
