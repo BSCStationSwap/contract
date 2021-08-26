@@ -1144,7 +1144,8 @@ contract BSCSBaseStartPool is
     }
 
     function safeERC20Transfer(ERC20 erc20, address _to, uint256 _amount) 
-      public { 
+      private 
+    { 
       uint256 balance = erc20.balanceOf(address(this));
       if (_amount > balance) {
         erc20.transfer(_to, balance); 
