@@ -895,15 +895,15 @@ abstract contract ReentrancyGuard {
 
 pragma solidity 0.6.12;
 
-contract KDGKDGIDOPool is
+contract BSCSBSCSIDOPool is
     Ownable,
     ReentrancyGuard,
-    ERC20("KDG KDG IDO Pool", "KDG-KDG")
+    ERC20("BSCS BSCS IDO Pool", "BSCS-BSCS")
 {
     using SafeMath for uint256;
 
     // The address of the smart chef factory
-    address public KDG_CASTLE_FACTORY;
+    address public BSCS_CASTLE_FACTORY;
 
     // Whether a limit is set for users
     bool public hasUserLimit;
@@ -1001,7 +1001,7 @@ contract KDGKDGIDOPool is
     event NewUnStakingBlock(uint256 startUnStakingBlock);
 
     constructor() public {
-        KDG_CASTLE_FACTORY = msg.sender;
+        BSCS_CASTLE_FACTORY = msg.sender;
     }
 
     /*
@@ -1030,7 +1030,7 @@ contract KDGKDGIDOPool is
         address _admin
     ) external {
         require(!isInitialized, "Already initialized");
-        require(msg.sender == KDG_CASTLE_FACTORY, "Not factory");
+        require(msg.sender == BSCS_CASTLE_FACTORY, "Not factory");
         require(
             _rewardTokens.length == _rewardPerBlock.length,
             "Mismatch length"
