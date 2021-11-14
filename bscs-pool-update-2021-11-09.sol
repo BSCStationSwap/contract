@@ -1,24 +1,4 @@
 /**
- *Submitted for verification at BscScan.com on 2021-11-09
-*/
-
-/**
- *Submitted for verification at BscScan.com on 2021-09-22
-*/
-
-/**
- *Submitted for verification at BscScan.com on 2021-08-30
-*/
-
-/**
- *Submitted for verification at BscScan.com on 2021-08-27
-*/
-
-/**
- *Submitted for verification at BscScan.com on 2021-08-02
-*/
-
-/**
  *Submitted for verification at BscScan.com on 2021-07-31
 */
 
@@ -915,15 +895,15 @@ abstract contract ReentrancyGuard {
 
 pragma solidity 0.6.12;
 
-contract BSCSBSCSIDOPool is
+contract KDGKDGIDOPool is
     Ownable,
     ReentrancyGuard,
-    ERC20("BSCS BSCS IDO Pool", "BSCS-BSCS")
+    ERC20("KDG KDG IDO Pool", "KDG-KDG")
 {
     using SafeMath for uint256;
 
     // The address of the smart chef factory
-    address public BSCStaion_CASTLE_FACTORY;
+    address public KDG_CASTLE_FACTORY;
 
     // Whether a limit is set for users
     bool public hasUserLimit;
@@ -1021,7 +1001,7 @@ contract BSCSBSCSIDOPool is
     event NewUnStakingBlock(uint256 startUnStakingBlock);
 
     constructor() public {
-        BSCStaion_CASTLE_FACTORY = msg.sender;
+        KDG_CASTLE_FACTORY = msg.sender;
     }
 
     /*
@@ -1050,7 +1030,7 @@ contract BSCSBSCSIDOPool is
         address _admin
     ) external {
         require(!isInitialized, "Already initialized");
-        require(msg.sender == BSCStaion_CASTLE_FACTORY, "Not factory");
+        require(msg.sender == KDG_CASTLE_FACTORY, "Not factory");
         require(
             _rewardTokens.length == _rewardPerBlock.length,
             "Mismatch length"
@@ -1123,16 +1103,42 @@ contract BSCSBSCSIDOPool is
         return true;
     }
     
-    function getUnstakeAmount(address _user) public view returns(uint256) {
-        require(_user != address(0), "Invalid address");
-        require(_user == msg.sender, "Invalid address");
+    function getUserStakedCount(address _user) 
+        internal 
+        returns(uint256) 
+    {
         uint256 numStakes;
+        for(uint256 i = 0; i < stakeDetails[_user].length;  i++) {
+            numStakes++;
+        }
+        return numStakes;
+    }
+    
+    function getStakedSchedule(address _user) 
+        external 
+        returns 
+        (uint256[] memory, uint256[] memory, uint256[] memory)
+    {
+      uint256 stakedCount = getUserStakedCount(_user);
+      uint256[] memory startStake = new uint256[](stakedCount);
+      uint256[] memory endStake = new uint256[](stakedCount);
+      uint256[] memory amount = new uint256[](stakedCount);
+      
+      for (uint256 i = 0; i < stakedCount; i++) {
+          startStake[i] = stakeDetails[msg.sender][i].startStakeBlock; 
+          endStake[i] = stakeDetails[msg.sender][i].endStakeBlock;
+          amount[i] = stakeDetails[msg.sender][i].amount;
+      }
+
+      return (startStake, endStake, amount);
+  }
+    
+    function getUnstakeAmount(address _user) public view returns(uint256) {
         uint256 claimAmount;
         for(uint256 i = 0; i < stakeDetails[_user].length;  i++) {
             if (stakeDetails[_user][i].endStakeBlock < block.number) {
                 claimAmount += stakeDetails[_user][i].amount;   
             }
-            numStakes++;
         }
         
         return claimAmount;
@@ -1140,14 +1146,12 @@ contract BSCSBSCSIDOPool is
    
     function leaveStakeUser() internal returns(uint256) {
         require(msg.sender != address(0), "Invalid address");
-        uint256 numStakes = 0;
         uint256 claimAmount;
         for(uint256 i = 0; i < stakeDetails[msg.sender].length;  i++) {
             if (stakeDetails[msg.sender][i].endStakeBlock < block.number) {
                 claimAmount += stakeDetails[msg.sender][i].amount;   
                 delete stakeDetails[msg.sender][i];
             }
-            numStakes++;
         }
         
         return claimAmount;
