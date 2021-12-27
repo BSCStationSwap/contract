@@ -404,7 +404,7 @@ contract JoinPool {
   
   uint256 public joinStartAt;
   uint256 public joinedCount;
-  
+  uint256 public maxSell;
  
   bool public initialized; 
   
@@ -430,13 +430,15 @@ event EventEmergencyWithdraw(
   constructor(
     address _busdToken, 
     address _fundReceiver,
-    uint256 _joinStartAt
+    uint256 _joinStartAt,
+    uint256 _maxSellSlots
   ) 
   {
     admin = msg.sender; 
     busdToken = _busdToken;
     joinStartAt = _joinStartAt;
     fundReceiver = _fundReceiver;
+    maxSell = _maxSellSlots;
   }
   
   function setAdm( address _newAdmin) external {
@@ -448,6 +450,7 @@ event EventEmergencyWithdraw(
   function setConfig(
     address _busdToken,
     uint256 _joinStartAt,
+    uint256 _maxSellSlots,
     address _fundReceiver
   ) 
     external 
@@ -469,6 +472,8 @@ event EventEmergencyWithdraw(
     if (_fundReceiver != address(0)) {
         fundReceiver = _fundReceiver;        
     }
+
+    maxSell = _maxSellSlots;
     
     emit EventSetConfig(
         _busdToken,
@@ -514,7 +519,9 @@ event EventEmergencyWithdraw(
      // must be in whitelist 
     require(recoverSigner(message, sig) == admin , 'wrong signature');
     require(isJoined[msg.sender][_projectId][_roundId] == false,'Already joined');
-    
+    if (maxSell > 0) {
+        require(joinedCount <= maxSell, 'Full slots');
+    }
     isJoined[msg.sender][_projectId][_roundId] = true;
     totalJoined += _amount;
     joinedCount += 1;
