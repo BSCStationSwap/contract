@@ -1260,23 +1260,26 @@ contract BnftStartPools is
         address nftAddress;
         address stakeOwner;
         uint256 nftId;
+        uint256 price;
         uint256 stakeDate; // start staking block
+        uint256 harvestedAmount;
         bool stakingStaus;
     }
 
     //nft_id to staking info
-    mapping(uint256 => UserInfo) public stakes;
+    mapping(address => mapping(uint256 => UserInfo)) public stakes;
 
     // nft contract address allowed to stake
     mapping(address => bool) public nftContracts;
-
+    uint256 public constant MAX_FEE = 10000;
     uint256 public stakeCount;
+    uint256 public rewardPercent; // 100 ~ 100/10000 ~ 0.01 ~ 1%
 
     // The reward token
     ERC20 public rewardToken;
     
     event EventDeposit(address indexed user, uint256 indexed nftId, address nftAddr, uint256 depositedDate);
-    event EventWithdraw(address indexed user, uint256 indexed nftId, address nftAddr, uint256 amount);
+    event EventWithdraw(address indexed user, uint256 indexed nftId, address nftAddr, uint256 amount, uint256 depositedDate);
 
     constructor() public {
         admin = msg.sender;
@@ -1299,7 +1302,25 @@ contract BnftStartPools is
         nftContracts[_nftContract] = true;
         poolStatus = true;
     }
+
+    function setRewardPercent(uint256 _rewardPercent) external onlyOwner {
+        require(_rewardPercent >= 0 && _rewardPercent <= MAX_FEE, "Invalid Fee Percent");
+        rewardPercent = _rewardPercent;
+    }
+
+    function calcPendingReward(address _nftContract, uint256 _price, uint256 _nftId) internal view returns(uint256) {
+        uint256 rewardPerSec = (_price.mul(rewardPercent).div(MAX_FEE)).div(31536000); // 31536000 seconds per year
+        UserInfo storage stake = stakes[_nftContract][_nftId];
+        uint256 rewardTime = block.timestamp - stake.stakeDate;
+        uint256 actualReward = rewardTime.mul(rewardPerSec) - stake.harvestedAmount;
+
+        return actualReward;
+    }
     
+    function pendingReward(address _nftContract, uint256 _price, uint256 _nftId) external view returns(uint256){
+        return calcPendingReward(_nftContract, _price, _nftId);
+    }
+
     /**
      * Always returns `IERC721Receiver.onERC721Received.selector`.
      */
@@ -1361,27 +1382,30 @@ contract BnftStartPools is
         return (v, r, s);
     }
     
-    function deposit(uint256 _nftId, address _nftAddress, bytes calldata sig) external nonReentrant {
+    function deposit(uint256 _nftId, address _nftAddress, uint256 _price, bytes calldata sig) external nonReentrant {
         bytes32 message = prefixed(keccak256(abi.encodePacked(
             msg.sender,
             _nftId,
+            _price,
             _nftAddress,
             address(this)
         )));
         // must be in whitelist 
         require(recoverSigner(message, sig) == signer , 'wrong signature');
         require(_nftId >= 0, "Invalid NFT ID");
-        require(poolStatus, "Pool is not ready yet");
+        require(poolStatus, "Pool is paused");
 
         require(IERC721(_nftAddress).ownerOf(_nftId) == msg.sender, "You are not the owner");
         require(nftContracts[_nftAddress],"Not allowed nft contract");
 
-        UserInfo storage stake = stakes[_nftId];
+        UserInfo storage stake = stakes[_nftAddress][_nftId];
         require(stake.stakingStaus == false, "Already staking");
         stake.stakingStaus = true;
         stake.stakeOwner = msg.sender;
         stake.nftId = _nftId;
+        stake.price = _price;
         stake.stakeDate = block.timestamp;
+        stake.harvestedAmount = 0;
         stake.nftAddress = _nftAddress;
 
         stakeCount++;
@@ -1407,27 +1431,32 @@ contract BnftStartPools is
      * @notice Withdraw staked tokens and collect reward tokens
      * @param _nftId: token id to unstake (in rewardToken)
      */
-    function withdraw(uint256 _nftId, address _nftAddress, uint256 _amount, bool unStake, bytes calldata sig) external nonReentrant {
+    function withdraw(uint256 _nftId, address _nftAddress, uint256 _price, bool unStake, bytes calldata sig) external nonReentrant {
+        UserInfo storage stake = stakes[_nftAddress][_nftId];
+        uint256 _amount = calcPendingReward(_nftAddress, _price, _nftId);
+        
         bytes32 message = prefixed(keccak256(abi.encodePacked(
-            msg.sender, 
-            _amount,
+            msg.sender,
             _nftId,
+            _price,
             _nftAddress,
             address(this)
         )));
         require(recoverSigner(message, sig) == signer , "wrong signature");
         require(nftContracts[_nftAddress],"Not allowed nft contract");
-        
-        UserInfo storage stake = stakes[_nftId];
+        require(_nftId >= 0, "Invalid NFT ID");
+        require(poolStatus, "Pool is paused");
         require(stake.stakingStaus == true, "NFT token is not in the pool");
         require(stake.stakeOwner == msg.sender, "You are not the owner");
-
+        
         safeERC20Transfer(ERC20(rewardToken), address(msg.sender),_amount);
+        stake.harvestedAmount += _amount;
         if (unStake) {
             stake.stakingStaus = false;
+            stake.harvestedAmount = 0;
             IERC721(stake.nftAddress).safeTransferFrom(address(this),msg.sender, _nftId);
         }
-        emit EventWithdraw(msg.sender, _nftId, _nftAddress, _amount);
+        emit EventWithdraw(msg.sender, _nftId, _nftAddress, _amount, block.timestamp);
     }
 
     /*
